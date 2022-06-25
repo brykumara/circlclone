@@ -6,7 +6,7 @@ import (
 
 // 511-bit number representing prime field element GF(p)
 type fp [numWords]uint64
-type Fp [numWords]uint64
+type Fp [NumWords]uint64
 
 // Represents projective point on elliptic curve E over GF(p)
 type point struct {
@@ -14,8 +14,8 @@ type point struct {
 	z fp
 }
 type Point struct {
-	x fp
-	z fp
+	x Fp
+	z Fp
 }
 
 // Curve coefficients
@@ -24,17 +24,16 @@ type coeff struct {
 	c fp
 }
 type Coeff struct {
-	a fp
-	c fp
+	a Fp
+	c Fp
 }
-
 type fpRngGen struct {
 	// working buffer needed to avoid memory allocation
 	wbuf [64]byte
 }
 type FpRngGen struct {
 	// working buffer needed to avoid memory allocation
-	wbuf [64]byte
+	Wbuf [64]byte
 }
 
 // Defines operations on public key
@@ -44,10 +43,22 @@ type PublicKey struct {
 	// y^2 = x^3 + Ax^2 + x.
 	a fp
 }
+type PublicKey1 struct {
+	FpRngGen
+	// Montgomery coefficient A from GF(p) of the elliptic curve
+	// y^2 = x^3 + Ax^2 + x.
+	a Fp
+}
 
 // Defines operations on private key
 type PrivateKey struct {
 	fpRngGen
+	// private key is a set of integers randomly
+	// each sampled from a range [-5, 5].
+	e [PrivateKeySize]int8
+}
+type PrivateKey1 struct {
+	FpRngGen
 	// private key is a set of integers randomly
 	// each sampled from a range [-5, 5].
 	e [PrivateKeySize]int8
@@ -76,7 +87,7 @@ func (s *fpRngGen) randFp(v *fp, rng io.Reader) {
 	}
 }
 func (s *FpRngGen) RandFp(v *Fp, rng io.Reader) {
-	mask := uint64(1<<(pbits%limbBitSize)) - 1
+	mask := uint64(1<<(Pbits%LimbBitSize)) - 1
 	for {
 		*v = Fp{}
 		_, err := io.ReadFull(rng, s.wbuf[:])
@@ -85,13 +96,13 @@ func (s *FpRngGen) RandFp(v *Fp, rng io.Reader) {
 		}
 
 		for i := 0; i < len(s.wbuf); i++ {
-			j := i / limbByteSize
+			j := i / LimbByteSize
 			k := uint(i % 8)
 			v[j] |= uint64(s.wbuf[i]) << (8 * k)
 		}
 
 		v[len(v)-1] &= mask
-		if isLess(v, &p) {
+		if IsLess(v, &p) {
 			return
 		}
 	}
@@ -153,17 +164,17 @@ func CofactorMul(p *Point, a *Coeff, halfL, halfR int, order *Fp) (bool, bool) {
 	var r1, d1, r2, d2 bool
 	if (halfR - halfL) == 1 {
 		// base case
-		if !p.z.isZero() {
-			tmp := Fp{primes[halfL]}
-			xMul(p, p, a, &tmp)
+		if !p.z.IsZero() {
+			tmp := Fp{Primes[halfL]}
+			XMul(p, p, a, &tmp)
 
 			if !p.z.isZero() {
 				// order does not divide p+1 -> ordinary curve
 				return true, false
 			}
 
-			mul512(order, order, primes[halfL])
-			if isLess(&fourSqrtP, order) {
+			Mul512(order, order, Primes[halfL])
+			if IsLess(&FourSqrtP, order) {
 				// order > 4*sqrt(p) -> supersingular curve
 				return true, true
 			}
@@ -172,23 +183,23 @@ func CofactorMul(p *Point, a *Coeff, halfL, halfR int, order *Fp) (bool, bool) {
 	}
 
 	// perform another recursive step
-	mid := halfL + ((halfR - halfL + 1) / 2)
-	mulL, mulR := fp{1}, fp{1}
+	Mid := halfL + ((halfR - halfL + 1) / 2)
+	MulL, MulR := Fp{1}, Fp{1}
 	// compute u = primes_1 * ... * primes_m
 	for i := halfL; i < mid; i++ {
-		mul512(&mulR, &mulR, primes[i])
+		Mul512(&mulR, &mulR, primes[i])
 	}
 	// compute v = primes_m+1 * ... * primes_n
 	for i := mid; i < halfR; i++ {
-		mul512(&mulL, &mulL, primes[i])
+		Mul512(&mulL, &mulL, primes[i])
 	}
 
 	// calculate Q_i
-	xMul(&Q, p, a, &mulR)
-	xMul(p, p, a, &mulL)
+	XMul(&Q, p, a, &mulR)
+	XMul(p, p, a, &mulL)
 
-	d1, r1 = cofactorMul(&Q, a, mid, halfR, order)
-	d2, r2 = cofactorMul(p, a, halfL, mid, order)
+	d1, r1 = CofactorMul(&Q, a, mid, halfR, order)
+	d2, r2 = CofactorMul(p, a, halfL, mid, order)
 	return d1 || d2, r1 || r2
 }
 
@@ -270,16 +281,16 @@ func groupAction(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
 	}
 	pub.a = A.a
 }
-func groupAction(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
-	var k [2]fp
-	var e [2][primeCount]uint8
+func GroupAction(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
+	var k [2]Fp
+	var e [2][PrimeCount]uint8
 	done := [2]bool{false, false}
-	A := coeff{a: pub.a, c: one}
+	A := Coeff{a: pub.a, c: One}
 
 	k[0][0] = 4
 	k[1][0] = 4
 
-	for i, v := range primes {
+	for i, v := range Primes {
 		t := (prv.e[uint(i)>>1] << ((uint(i) % 2) * 4)) >> 4
 		if t > 0 {
 			e[0][i] = uint8(t)
@@ -292,8 +303,8 @@ func groupAction(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
 		} else {
 			e[0][i] = 0
 			e[1][i] = 0
-			mul512(&k[0], &k[0], v)
-			mul512(&k[1], &k[1], v)
+			Mul512(&k[0], &k[0], v)
+			Mul512(&k[1], &k[1], v)
 		}
 	}
 
@@ -301,49 +312,49 @@ func groupAction(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
 		var P Point
 		var rhs Fp
 		prv.RandFp(&P.x, rng)
-		P.z = one
-		montEval(&rhs, &A.a, &P.x)
-		sign := rhs.isNonQuadRes()
+		P.z = One
+		MontEval(&rhs, &A.a, &P.x)
+		sign := rhs.IsNonQuadRes()
 
 		if done[sign] {
 			continue
 		}
 
-		xMul(&P, &P, &A, &k[sign])
+		XMul(&P, &P, &A, &k[sign])
 		done[sign] = true
 
-		for i, v := range primes {
+		for i, v := range Orimes {
 			if e[sign][i] != 0 {
 				cof := Fp{1}
 				var K Point
 
-				for j := i + 1; j < len(primes); j++ {
+				for j := i + 1; j < len(Primes); j++ {
 					if e[sign][j] != 0 {
-						mul512(&cof, &cof, primes[j])
+						Mul512(&cof, &cof, Primes[j])
 					}
 				}
 
-				xMul(&K, &P, &A, &cof)
-				if !K.z.isZero() {
-					xIso(&P, &A, &K, v)
+				XMul(&K, &P, &A, &cof)
+				if !K.z.IsZero() {
+					XIso(&P, &A, &K, v)
 					e[sign][i] = e[sign][i] - 1
 					if e[sign][i] == 0 {
-						mul512(&k[sign], &k[sign], primes[i])
+						Mul512(&k[sign], &k[sign], Primes[i])
 					}
 				}
 			}
 			done[sign] = done[sign] && (e[sign][i] == 0)
 		}
 
-		modExpRdc512(&A.c, &A.c, &pMin1)
-		mulRdc(&A.a, &A.a, &A.c)
-		A.c = one
+		ModExpRdc512(&A.c, &A.c, &pMin1)
+		MulRdc(&A.a, &A.a, &A.c)
+		A.c = One
 
 		if done[0] && done[1] {
 			break
 		}
 	}
-	pub.a = A.a
+	Pub.a = A.a
 }
 
 // PrivateKey operations

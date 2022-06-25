@@ -20,6 +20,21 @@ func xAdd(PaQ, P, Q, PdQ *point) {
 	mulRdc(&PaQ.x, &PdQ.z, &t2)
 	mulRdc(&PaQ.z, &PdQ.x, &t3)
 }
+func XAdd(PaQ, P, Q, PdQ *Point) {
+	var t0, t1, t2, t3 Fp
+	AddRdc(&t0, &P.x, &P.z)
+	SubRdc(&t1, &P.x, &P.z)
+	AddRdc(&t2, &Q.x, &Q.z)
+	SubRdc(&t3, &Q.x, &Q.z)
+	MulRdc(&t0, &t0, &t3)
+	MulRdc(&t1, &t1, &t2)
+	AddRdc(&t2, &t0, &t1)
+	SubRdc(&t3, &t0, &t1)
+	MulRdc(&t2, &t2, &t2) // sqr
+	MulRdc(&t3, &t3, &t3) // sqr
+	MulRdc(&PaQ.x, &PdQ.z, &t2)
+	MulRdc(&PaQ.z, &PdQ.x, &t3)
+}
 
 // xDbl implements point doubling on a Montgomery curve
 // E(x): x^3 + A*x^2 + x by using x-coordinate onlyh arithmetic.
@@ -41,7 +56,22 @@ func xDbl(Q, P, A *point) {
 	addRdc(&t0, &t0, &t1)
 	mulRdc(&Q.z, &t0, &t2)
 }
-
+func XDbl(Q, P, A *Point) {
+	var t0, t1, t2 Fp
+	AddRdc(&t0, &P.x, &P.z)
+	MulRdc(&t0, &t0, &t0) // sqr
+	SubRdc(&t1, &P.x, &P.z)
+	MulRdc(&t1, &t1, &t1) // sqr
+	SubRdc(&t2, &t0, &t1)
+	MulRdc(&t1, &four, &t1)
+	MulRdc(&t1, &t1, &A.z)
+	MulRdc(&Q.x, &t0, &t1)
+	AddRdc(&t0, &A.z, &A.z)
+	AddRdc(&t0, &t0, &A.x)
+	MulRdc(&t0, &t0, &t2)
+	AddRdc(&t0, &t0, &t1)
+	MulRdc(&Q.z, &t0, &t2)
+}
 // xDblAdd implements combined doubling of point P
 // and addition of points P and Q on a Montgomery curve
 // E(x): x^3 + A*x^2 + x by using x-coordinate onlyh arithmetic.
@@ -71,7 +101,30 @@ func xDblAdd(PaP, PaQ, P, Q, PdQ *point, A24 *coeff) {
 	mulRdc(&PaQ.z, &PaQ.z, &PdQ.x)
 	mulRdc(&PaQ.x, &PaQ.x, &PdQ.z)
 }
+func XDblAdd(PaP, PaQ, P, Q, PdQ *Point, A24 *Coeff) {
+	var t0, t1, t2 Fp
 
+	AddRdc(&t0, &P.x, &P.z)
+	SubRdc(&t1, &P.x, &P.z)
+	MulRdc(&PaP.x, &t0, &t0)
+	SubRdc(&t2, &Q.x, &Q.z)
+	AddRdc(&PaQ.x, &Q.x, &Q.z)
+	MulRdc(&t0, &t0, &t2)
+	MulRdc(&PaP.z, &t1, &t1)
+	MulRdc(&t1, &t1, &PaQ.x)
+	SubRdc(&t2, &PaP.x, &PaP.z)
+	MulRdc(&PaP.z, &PaP.z, &A24.c)
+	MulRdc(&PaP.x, &PaP.x, &PaP.z)
+	MulRdc(&PaQ.x, &A24.a, &t2)
+	SubRdc(&PaQ.z, &t0, &t1)
+	AddRdc(&PaP.z, &PaP.z, &PaQ.x)
+	AddRdc(&PaQ.x, &t0, &t1)
+	MulRdc(&PaP.z, &PaP.z, &t2)
+	MulRdc(&PaQ.z, &PaQ.z, &PaQ.z)
+	MulRdc(&PaQ.x, &PaQ.x, &PaQ.x)
+	MulRdc(&PaQ.z, &PaQ.z, &PdQ.x)
+	MulRdc(&PaQ.x, &PaQ.x, &PdQ.z)
+}
 // cswappoint swaps P1 with P2 in constant time. The 'choice'
 // parameter must have a value of either 1 (results
 // in swap) or 0 (results in no-swap).
@@ -79,7 +132,10 @@ func cswappoint(P1, P2 *point, choice uint8) {
 	cswap512(&P1.x, &P2.x, choice)
 	cswap512(&P1.z, &P2.z, choice)
 }
-
+func Cswappoint(P1, P2 *Point, choice uint8) {
+	Cswap512(&P1.x, &P2.x, choice)
+	Cswap512(&P1.z, &P2.z, choice)
+}
 // xMul implements point multiplication with left-to-right Montgomery
 // adder. co is A coefficient of x^3 + A*x^2 + x curve. k must be > 0
 //
@@ -117,7 +173,39 @@ func xMul(kP, P *point, co *coeff, k *fp) {
 	cswappoint(&Q, &R, uint8(k[0]&1))
 	*kP = Q
 }
+func XMul(kP, P *Point, co *Coeff, k *Fp) {
+	var A24 Coeff
+	var Q Point
+	var j uint
+	A := Point{x: co.a, z: co.c}
+	R := *P
 
+	// Precompyte A24 = (A+2C:4C) => (A24.x = A.x+2A.z; A24.z = 4*A.z)
+	AddRdc(&A24.a, &co.c, &co.c)
+	AddRdc(&A24.a, &A24.a, &co.a)
+	MulRdc(&A24.c, &co.c, &Four)
+
+	// Skip initial 0 bits.
+	for j = 511; j > 0; j-- {
+		// performance hit from making it constant-time is actually
+		// quite big, so... unsafe branch for now
+		if uint8(k[j>>6]>>(j&63)&1) != 0 {
+			break
+		}
+	}
+
+	XDbl(&Q, P, &A)
+	prevBit := uint8(1)
+	for i := j; i > 0; {
+		i--
+		bit := uint8(k[i>>6] >> (i & 63) & 1)
+		Cswappoint(&Q, &R, prevBit^bit)
+		XDblAdd(&Q, &R, &Q, &R, P, &A24)
+		prevBit = bit
+	}
+	Cswappoint(&Q, &R, uint8(k[0]&1))
+	*kP = Q
+}
 // xIso computes the isogeny with kernel point kern of a given order
 // kernOrder. Returns the new curve coefficient co and the image img.
 //
@@ -198,7 +286,78 @@ func xIso(img *point, co *coeff, kern *point, kernOrder uint64) {
 	subRdc(&co.c, &coEd.a, &coEd.c)
 	addRdc(&co.a, &co.a, &co.a)
 }
+func XIso(img *Point, co *Coeff, kern *Point, kernOrder uint64) {
+	var t0, t1, t2, S, D Fp
+	var Q, prod Point
+	var coEd Coeff
+	M := [3]Point{*kern}
 
+	// Compute twisted Edwards coefficients
+	// coEd.a = co.a + 2*co.c
+	// coEd.c = co.a - 2*co.c
+	// coEd.a*X^2 + Y^2 = 1 + coEd.c*X^2*Y^2
+	AddRdc(&coEd.c, &co.c, &co.c)
+	AddRdc(&coEd.a, &co.a, &coEd.c)
+	SubRdc(&coEd.c, &co.a, &coEd.c)
+
+	// Transfer point to twisted Edwards YZ-coordinates
+	// (X:Z)->(Y:Z) = (X-Z : X+Z)
+	AddRdc(&S, &img.x, &img.z)
+	SubRdc(&D, &img.x, &img.z)
+
+	SubRdc(&prod.x, &kern.x, &kern.z)
+	AddRdc(&prod.z, &kern.x, &kern.z)
+
+	MulRdc(&t1, &prod.x, &S)
+	MulRdc(&t0, &prod.z, &D)
+	AddRdc(&Q.x, &t0, &t1)
+	SubRdc(&Q.z, &t0, &t1)
+
+	XDbl(&M[1], kern, &Point{x: co.a, z: co.c})
+
+	// NOTE: Not constant time.
+	for i := uint64(1); i < kernOrder>>1; i++ {
+		if i >= 2 {
+			XAdd(&M[i%3], &M[(i-1)%3], kern, &M[(i-2)%3])
+		}
+		SubRdc(&t1, &M[i%3].x, &M[i%3].z)
+		AddRdc(&t0, &M[i%3].x, &M[i%3].z)
+		MulRdc(&prod.x, &prod.x, &t1)
+		MulRdc(&prod.z, &prod.z, &t0)
+		MulRdc(&t1, &t1, &S)
+		MulRdc(&t0, &t0, &D)
+		AddRdc(&t2, &t0, &t1)
+		MulRdc(&Q.x, &Q.x, &t2)
+		SubRdc(&t2, &t0, &t1)
+		MulRdc(&Q.z, &Q.z, &t2)
+	}
+
+	MulRdc(&Q.x, &Q.x, &Q.x)
+	MulRdc(&Q.z, &Q.z, &Q.z)
+	MulRdc(&img.x, &img.x, &Q.x)
+	MulRdc(&img.z, &img.z, &Q.z)
+
+	// coEd.a^kernOrder and coEd.c^kernOrder
+	ModExpRdc64(&coEd.a, &coEd.a, kernOrder)
+	ModExpRdc64(&coEd.c, &coEd.c, kernOrder)
+
+	// prod^8
+	MulRdc(&prod.x, &prod.x, &prod.x)
+	MulRdc(&prod.x, &prod.x, &prod.x)
+	MulRdc(&prod.x, &prod.x, &prod.x)
+	MulRdc(&prod.z, &prod.z, &prod.z)
+	MulRdc(&prod.z, &prod.z, &prod.z)
+	MulRdc(&prod.z, &prod.z, &prod.z)
+
+	// Compute image curve params
+	MulRdc(&coEd.c, &coEd.c, &prod.x)
+	MulRdc(&coEd.a, &coEd.a, &prod.z)
+
+	// Convert curve coefficients back to Montgomery
+	AddRdc(&co.a, &coEd.a, &coEd.c)
+	SubRdc(&co.c, &coEd.a, &coEd.c)
+	AddRdc(&co.a, &co.a, &co.a)
+}
 // montEval evaluates x^3 + Ax^2 + x.
 func montEval(res, A, x *fp) {
 	var t fp
@@ -209,4 +368,13 @@ func montEval(res, A, x *fp) {
 	addRdc(res, res, &t)
 	addRdc(res, res, &one)
 	mulRdc(res, res, x)
+}func MontEval(res, A, x *Fp) {
+	var t Fp
+
+	*res = *x
+	MulRdc(res, res, res)
+	MulRdc(&t, A, x)
+	AddRdc(res, res, &t)
+	AddRdc(res, res, &one)
+	MulRdc(res, res, x)
 }
