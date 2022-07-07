@@ -195,7 +195,7 @@ func groupAction(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
 }
 
 func GroupAction(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
-	return groupAction(pub, prv, rng)
+	groupAction(pub, prv, rng)
 }
 
 // PrivateKey operations
