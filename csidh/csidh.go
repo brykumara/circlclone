@@ -66,8 +66,8 @@ func (s *fpRngGen) randFp(v *fp, rng io.Reader) {
 	}
 }
 func (S *FpRngGen) RandFp(V *Fp, rng io.Reader) {
-	var s = (*fpRngGen)(S)
-	var v = (*fp)(V)
+	var s *fpRngGen = (*fpRngGen)(S)
+	var v *fp = (*fp)(V)
 	s.randFp(v, rng)
 }
 
