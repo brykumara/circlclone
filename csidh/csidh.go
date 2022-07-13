@@ -6,9 +6,7 @@ import (
 
 // 511-bit number representing prime field element GF(p)
 type fp [numWords]uint64
-type Fp struct {
-	x fp
-}
+type Fp fp
 
 // Represents projective point on elliptic curve E over GF(p)
 type point struct {
