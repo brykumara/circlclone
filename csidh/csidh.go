@@ -6,23 +6,26 @@ import (
 
 // 511-bit number representing prime field element GF(p)
 type fp [numWords]uint64
+type Fp fp
 
 // Represents projective point on elliptic curve E over GF(p)
 type point struct {
 	x fp
 	z fp
 }
+type Point point
 
 // Curve coefficients
 type coeff struct {
 	a fp
 	c fp
 }
-
+type Coeff coeff
 type fpRngGen struct {
 	// working buffer needed to avoid memory allocation
 	wbuf [64]byte
 }
+type FpRngGen fpRngGen
 
 // Defines operations on public key
 type PublicKey struct {
@@ -61,6 +64,11 @@ func (s *fpRngGen) randFp(v *fp, rng io.Reader) {
 			return
 		}
 	}
+}
+func (S *FpRngGen) RandFp(V *Fp, rng io.Reader) {
+	var s = (*fpRngGen)(S)
+	var v = (*fp)(V)
+	s.randFp(v, rng)
 }
 
 // cofactorMul helper implements batch cofactor multiplication as described
@@ -113,6 +121,14 @@ func cofactorMul(p *point, a *coeff, halfL, halfR int, order *fp) (bool, bool) {
 	d1, r1 = cofactorMul(&Q, a, mid, halfR, order)
 	d2, r2 = cofactorMul(p, a, halfL, mid, order)
 	return d1 || d2, r1 || r2
+}
+func CofactorMul(P *Point, A *Coeff, HalfL, HalfR int, Order *fp) (bool, bool) {
+	var p = (*point)(P)
+	var a = (*coeff)(A)
+	var halfL = (int)(HalfL)
+	var halfR = (int)(HalfR)
+	var order = (*fp)(Order)
+	return cofactorMul(p, a, halfL, halfR, order)
 }
 
 // groupAction evaluates group action of prv.e on a Montgomery
@@ -251,6 +267,10 @@ func (c *PublicKey) reset() {
 	for i := range c.a {
 		c.a[i] = 0
 	}
+}
+
+func (c *PublicKey) Reset() {
+	c.reset()
 }
 
 // Assumes key is in Montgomery domain.

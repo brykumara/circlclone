@@ -20,6 +20,13 @@ func xAdd(PaQ, P, Q, PdQ *point) {
 	mulRdc(&PaQ.x, &PdQ.z, &t2)
 	mulRdc(&PaQ.z, &PdQ.x, &t3)
 }
+func XAdd(PaQ, P, Q, PdQ *Point) {
+	var paQ = (*point)(PaQ)
+	var p = (*point)(P)
+	var q = (*point)(Q)
+	var pdQ = (*point)(PdQ)
+	xAdd(paQ, p, q, pdQ)
+}
 
 // xDbl implements point doubling on a Montgomery curve
 // E(x): x^3 + A*x^2 + x by using x-coordinate onlyh arithmetic.
@@ -40,6 +47,12 @@ func xDbl(Q, P, A *point) {
 	mulRdc(&t0, &t0, &t2)
 	addRdc(&t0, &t0, &t1)
 	mulRdc(&Q.z, &t0, &t2)
+}
+func XDbl(Q, P, A *Point) {
+	var q = (*point)(Q)
+	var p = (*point)(P)
+	var a = (*point)(A)
+	xDbl(q, p, a)
 }
 
 // xDblAdd implements combined doubling of point P
@@ -71,6 +84,15 @@ func xDblAdd(PaP, PaQ, P, Q, PdQ *point, A24 *coeff) {
 	mulRdc(&PaQ.z, &PaQ.z, &PdQ.x)
 	mulRdc(&PaQ.x, &PaQ.x, &PdQ.z)
 }
+func XDblAdd(PaP, PaQ, P, Q, PdQ *Point, A24 *Coeff) {
+	var paP = (*point)(PaP)
+	var paQ = (*point)(PaQ)
+	var p = (*point)(P)
+	var q = (*point)(Q)
+	var pdQ = (*point)(PdQ)
+	var a24 = (*coeff)(A24)
+	xDblAdd(paP, paQ, p, q, pdQ, a24)
+}
 
 // cswappoint swaps P1 with P2 in constant time. The 'choice'
 // parameter must have a value of either 1 (results
@@ -78,6 +100,11 @@ func xDblAdd(PaP, PaQ, P, Q, PdQ *point, A24 *coeff) {
 func cswappoint(P1, P2 *point, choice uint8) {
 	cswap512(&P1.x, &P2.x, choice)
 	cswap512(&P1.z, &P2.z, choice)
+}
+func Cswappoint(P1, P2 *Point, choice uint8) {
+	var p1 = (*point)(P1)
+	var p2 = (*point)(P2)
+	cswappoint(p1, p2, choice)
 }
 
 // xMul implements point multiplication with left-to-right Montgomery
@@ -116,6 +143,13 @@ func xMul(kP, P *point, co *coeff, k *fp) {
 	}
 	cswappoint(&Q, &R, uint8(k[0]&1))
 	*kP = Q
+}
+func XMul(KP, P *Point, Co *Coeff, K *Fp) {
+	var kP = (*point)(KP)
+	var p = (*point)(P)
+	var co = (*coeff)(Co)
+	var k = (*fp)(K)
+	xMul(kP, p, co, k)
 }
 
 // xIso computes the isogeny with kernel point kern of a given order
@@ -198,6 +232,12 @@ func xIso(img *point, co *coeff, kern *point, kernOrder uint64) {
 	subRdc(&co.c, &coEd.a, &coEd.c)
 	addRdc(&co.a, &co.a, &co.a)
 }
+func XIso(Img *Point, Co *Coeff, Kern *Point, kernOrder uint64) {
+	var img = (*point)(Img)
+	var co = (*coeff)(Co)
+	var kern = (*point)(Kern)
+	xIso(img, co, kern, kernOrder)
+}
 
 // montEval evaluates x^3 + Ax^2 + x.
 func montEval(res, A, x *fp) {
@@ -209,4 +249,10 @@ func montEval(res, A, x *fp) {
 	addRdc(res, res, &t)
 	addRdc(res, res, &one)
 	mulRdc(res, res, x)
+}
+func MontEval(Res, A, X *Fp) {
+	var res = (*fp)(Res)
+	var a = (*fp)(A)
+	var x = (*fp)(X)
+	montEval(res, a, x)
 }
