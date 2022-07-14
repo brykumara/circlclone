@@ -6,7 +6,7 @@ import (
 
 // 511-bit number representing prime field element GF(p)
 type fp [numWords]uint64
-type Fp fp
+type Fp [numWords]uint64
 
 // Represents projective point on elliptic curve E over GF(p)
 type point struct {
@@ -64,6 +64,11 @@ func (s *fpRngGen) randFp(v *fp, rng io.Reader) {
 			return
 		}
 	}
+}
+func (S *FpRngGen) RandFp(V *Fp, rng io.Reader) {
+	var s *fpRngGen = (*fpRngGen)(S)
+	var v *fp = (*fp)(V)
+	s.randFp(v, rng)
 }
 
 // cofactorMul helper implements batch cofactor multiplication as described
