@@ -65,11 +65,6 @@ func (s *fpRngGen) randFp(v *fp, rng io.Reader) {
 		}
 	}
 }
-func (S *FpRngGen) RandFp(V *Fp, rng io.Reader) {
-	var s *fpRngGen = (*fpRngGen)(S)
-	var v *fp = (*fp)(V)
-	s.randFp(v, rng)
-}
 
 // cofactorMul helper implements batch cofactor multiplication as described
 // in the ia.cr/2018/383 (algo. 3). Returns tuple of two booleans, first indicates

@@ -144,13 +144,6 @@ func xMul(kP, P *point, co *coeff, k *fp) {
 	cswappoint(&Q, &R, uint8(k[0]&1))
 	*kP = Q
 }
-func XMul(KP, P *Point, Co *Coeff, K *Fp) {
-	var kP = (*point)(KP)
-	var p = (*point)(P)
-	var co = (*coeff)(Co)
-	var k = (*fp)(K)
-	xMul(kP, p, co, k)
-}
 
 // xIso computes the isogeny with kernel point kern of a given order
 // kernOrder. Returns the new curve coefficient co and the image img.
@@ -249,10 +242,4 @@ func montEval(res, A, x *fp) {
 	addRdc(res, res, &t)
 	addRdc(res, res, &one)
 	mulRdc(res, res, x)
-}
-func MontEval(Res, A, X *Fp) {
-	var res = (*fp)(Res)
-	var a = (*fp)(A)
-	var x = (*fp)(X)
-	montEval(res, a, x)
 }
