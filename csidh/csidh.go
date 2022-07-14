@@ -122,7 +122,7 @@ func cofactorMul(p *point, a *coeff, halfL, halfR int, order *fp) (bool, bool) {
 	d2, r2 = cofactorMul(p, a, halfL, mid, order)
 	return d1 || d2, r1 || r2
 }
-func CofactorMul(P *Point, A *Coeff, HalfL, HalfR int, Order *fp) (bool, bool) {
+func CofactorMul(P *Point, A *Coeff, HalfL, HalfR int, Order *Fp) (bool, bool) {
 	var p = (*point)(P)
 	var a = (*coeff)(A)
 	var halfL = (int)(HalfL)
