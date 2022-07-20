@@ -130,3 +130,7 @@ func toFp(num string) fp {
 	copy(ret[:], intGetU64(&tmp))
 	return ret
 }
+func ToFp(num string) Fp {
+	var Val Fp = (Fp)(toFp(num))
+	return Val
+}
