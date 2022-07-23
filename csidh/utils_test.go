@@ -55,6 +55,9 @@ func randomFp() (u fp) {
 	_ = binary.Read(rand.Reader, binary.LittleEndian, &u)
 	return
 }
+func RandomFp() (U Fp) {
+	(randomFp())
+}
 
 // return x==y for fp.
 func eqFp(l, r *fp) bool {
