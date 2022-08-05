@@ -5,6 +5,7 @@ const (
 	pbits = 511
 	// primeCount number of Elkies primes used for constructing p
 	primeCount = 74
+	PrimeCount = 74
 	// (2*5+1)^74 is roughly 2^256
 	expMax = int8(5)
 	// size of the limbs, pretty much hardcoded to 64-bit words
