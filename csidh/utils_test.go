@@ -56,8 +56,8 @@ func randomFp() (u fp) {
 	return
 }
 func RandomFp() (U Fp) {
-	var V Fp = (Fp)(randomFp())
-	return (V)
+	(randomFp())
+	return (U)
 }
 
 // return x==y for fp.
